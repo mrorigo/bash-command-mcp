@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>bash-command-mcp | Spectral Cyberpunk Bash MCP Server</title>
+        <meta
+            name="description"
+            content="bash-command-mcp is a highly sophisticated Bash MCP server with foreground execution, background orchestration, OpenTelemetry traces/metrics, log streaming, and execution context overrides."
+        />
+        <style>
+            @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Chakra+Petch:wght@500;700&display=swap");
+
+            :root {
+                --bg-0: #06070f;
+                --bg-1: #0a1122;
+                --bg-2: #111c33;
+                --ink: #e8f6ff;
+                --muted: #a8c4d6;
+                --neon-cyan: #53f3ff;
+                --neon-blue: #5ea8ff;
+                --neon-pink: #ff4dd8;
+                --neon-lime: #b4ff56;
+                --glass: rgba(14, 22, 44, 0.62);
+                --line: rgba(131, 183, 255, 0.32);
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            html,
+            body {
+                margin: 0;
+                min-height: 100%;
+                background:
+                    radial-gradient(
+                        circle at 20% 10%,
+                        #1b2e59 0%,
+                        transparent 45%
+                    ),
+                    radial-gradient(
+                        circle at 85% 15%,
+                        #34185e 0%,
+                        transparent 38%
+                    ),
+                    radial-gradient(
+                        circle at 70% 80%,
+                        #12304a 0%,
+                        transparent 48%
+                    ),
+                    linear-gradient(
+                        150deg,
+                        var(--bg-0),
+                        var(--bg-1) 45%,
+                        var(--bg-2)
+                    );
+                color: var(--ink);
+                font-family: "Space Grotesk", "Segoe UI", sans-serif;
+            }
+
+            body::before {
+                content: "";
+                position: fixed;
+                inset: 0;
+                background-image:
+                    linear-gradient(
+                        rgba(119, 178, 255, 0.06) 1px,
+                        transparent 1px
+                    ),
+                    linear-gradient(
+                        90deg,
+                        rgba(119, 178, 255, 0.06) 1px,
+                        transparent 1px
+                    );
+                background-size: 42px 42px;
+                pointer-events: none;
+                z-index: 0;
+            }
+
+            .spectral-orb {
+                position: fixed;
+                width: 36vw;
+                height: 36vw;
+                border-radius: 50%;
+                filter: blur(42px);
+                opacity: 0.22;
+                z-index: 0;
+                pointer-events: none;
+                animation: drift 14s ease-in-out infinite alternate;
+            }
+
+            .spectral-orb.one {
+                top: -10vw;
+                left: -10vw;
+                background: conic-gradient(
+                    from 0deg,
+                    var(--neon-cyan),
+                    var(--neon-blue),
+                    var(--neon-pink),
+                    var(--neon-cyan)
+                );
+            }
+
+            .spectral-orb.two {
+                bottom: -14vw;
+                right: -10vw;
+                background: conic-gradient(
+                    from 40deg,
+                    var(--neon-lime),
+                    var(--neon-cyan),
+                    var(--neon-blue),
+                    var(--neon-lime)
+                );
+                animation-delay: 2s;
+            }
+
+            @keyframes drift {
+                from {
+                    transform: translate3d(0, 0, 0) scale(1);
+                }
+                to {
+                    transform: translate3d(2vw, -1.5vw, 0) scale(1.08);
+                }
+            }
+
+            .wrap {
+                position: relative;
+                z-index: 1;
+                max-width: 1160px;
+                margin: 0 auto;
+                padding: 28px 22px 72px;
+            }
+
+            .nav {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 16px;
+                margin-bottom: 26px;
+            }
+
+            .brand {
+                display: inline-flex;
+                align-items: center;
+                gap: 10px;
+                font-family: "Chakra Petch", sans-serif;
+                font-weight: 700;
+                letter-spacing: 0.04em;
+            }
+
+            .brand-dot {
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+                background: linear-gradient(
+                    120deg,
+                    var(--neon-cyan),
+                    var(--neon-pink)
+                );
+                box-shadow:
+                    0 0 16px var(--neon-cyan),
+                    0 0 26px var(--neon-pink);
+            }
+
+            .nav-cta {
+                color: var(--ink);
+                text-decoration: none;
+                border: 1px solid var(--line);
+                padding: 10px 14px;
+                border-radius: 999px;
+                font-size: 0.88rem;
+                backdrop-filter: blur(4px);
+                transition:
+                    border-color 180ms ease,
+                    transform 180ms ease;
+            }
+
+            .nav-cta:hover {
+                border-color: var(--neon-cyan);
+                transform: translateY(-1px);
+            }
+
+            .hero {
+                border: 1px solid var(--line);
+                border-radius: 26px;
+                background:
+                    linear-gradient(
+                        115deg,
+                        rgba(83, 243, 255, 0.09),
+                        transparent 36%
+                    ),
+                    linear-gradient(
+                        300deg,
+                        rgba(255, 77, 216, 0.08),
+                        transparent 44%
+                    ),
+                    var(--glass);
+                padding: clamp(26px, 5vw, 56px);
+                overflow: hidden;
+                position: relative;
+            }
+
+            .hero::after {
+                content: "";
+                position: absolute;
+                inset: auto -22% -60% auto;
+                width: 460px;
+                height: 460px;
+                border-radius: 50%;
+                background: radial-gradient(
+                    circle,
+                    rgba(94, 168, 255, 0.26),
+                    transparent 68%
+                );
+            }
+
+            .eyebrow {
+                margin: 0;
+                color: var(--neon-cyan);
+                text-transform: uppercase;
+                font-family: "Chakra Petch", sans-serif;
+                letter-spacing: 0.16em;
+                font-size: 0.76rem;
+            }
+
+            h1 {
+                margin: 10px 0 14px;
+                font-family: "Chakra Petch", sans-serif;
+                font-size: clamp(2rem, 6.3vw, 4.7rem);
+                line-height: 0.94;
+                letter-spacing: 0.01em;
+                max-width: 850px;
+            }
+
+            .gradient-title {
+                background: linear-gradient(
+                    90deg,
+                    var(--ink),
+                    var(--neon-cyan),
+                    var(--neon-pink)
+                );
+                -webkit-background-clip: text;
+                background-clip: text;
+                color: transparent;
+            }
+
+            .sub {
+                margin: 0;
+                max-width: 720px;
+                color: var(--muted);
+                font-size: clamp(1rem, 1.8vw, 1.22rem);
+                line-height: 1.5;
+            }
+
+            .hero-actions {
+                margin-top: 24px;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+
+            .btn {
+                border-radius: 12px;
+                padding: 12px 16px;
+                text-decoration: none;
+                font-weight: 600;
+                font-size: 0.94rem;
+                transition:
+                    transform 180ms ease,
+                    box-shadow 180ms ease;
+            }
+
+            .btn.primary {
+                color: #071423;
+                background: linear-gradient(
+                    115deg,
+                    var(--neon-cyan),
+                    var(--neon-lime)
+                );
+                box-shadow: 0 10px 30px rgba(83, 243, 255, 0.32);
+            }
+
+            .btn.ghost {
+                color: var(--ink);
+                border: 1px solid var(--line);
+                background: rgba(8, 15, 32, 0.45);
+            }
+
+            .btn:hover {
+                transform: translateY(-2px);
+            }
+
+            .scan {
+                margin-top: 30px;
+                border: 1px solid rgba(83, 243, 255, 0.25);
+                border-radius: 14px;
+                background: rgba(6, 12, 26, 0.7);
+                overflow: hidden;
+            }
+
+            .scan-head {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 11px 14px;
+                color: #cde6f8;
+                font-size: 0.83rem;
+                border-bottom: 1px solid rgba(90, 161, 255, 0.2);
+            }
+
+            .scan-dot {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: var(--neon-lime);
+                box-shadow: 0 0 9px var(--neon-lime);
+            }
+
+            .scan-body {
+                margin: 0;
+                padding: 14px;
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                color: #d3e5ff;
+                font-size: 0.84rem;
+                line-height: 1.5;
+                max-height: 160px;
+                overflow: auto;
+            }
+
+            .grid {
+                margin-top: 26px;
+                display: grid;
+                grid-template-columns: repeat(12, 1fr);
+                gap: 14px;
+            }
+
+            .card {
+                grid-column: span 6;
+                border: 1px solid var(--line);
+                border-radius: 16px;
+                background: var(--glass);
+                padding: 18px;
+            }
+
+            .card h3 {
+                margin: 0 0 6px;
+                font-family: "Chakra Petch", sans-serif;
+                letter-spacing: 0.03em;
+                font-size: 1.08rem;
+            }
+
+            .card p {
+                margin: 0;
+                color: var(--muted);
+                line-height: 1.45;
+            }
+
+            .toolset {
+                margin-top: 28px;
+                border: 1px solid var(--line);
+                border-radius: 22px;
+                background: rgba(10, 18, 36, 0.7);
+                padding: 20px;
+            }
+
+            .toolset h2 {
+                margin: 0 0 14px;
+                font-family: "Chakra Petch", sans-serif;
+                font-size: clamp(1.4rem, 2.5vw, 2rem);
+            }
+
+            .tools-grid {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 12px;
+            }
+
+            .tool {
+                border: 1px solid rgba(97, 174, 255, 0.28);
+                border-radius: 12px;
+                background: rgba(8, 16, 30, 0.8);
+                padding: 12px;
+            }
+
+            .tool code {
+                color: var(--neon-cyan);
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 0.95rem;
+            }
+
+            .tool p {
+                margin: 7px 0 0;
+                color: var(--muted);
+                font-size: 0.93rem;
+            }
+
+            .footer {
+                margin-top: 24px;
+                color: #9eb8ca;
+                font-size: 0.82rem;
+            }
+
+            .reveal {
+                opacity: 0;
+                transform: translateY(12px);
+                transition:
+                    opacity 500ms ease,
+                    transform 500ms ease;
+            }
+
+            .reveal.show {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+            @media (max-width: 960px) {
+                .card {
+                    grid-column: span 12;
+                }
+
+                .tools-grid {
+                    grid-template-columns: 1fr 1fr;
+                }
+            }
+
+            @media (max-width: 640px) {
+                .wrap {
+                    padding: 18px 14px 46px;
+                }
+
+                .tools-grid {
+                    grid-template-columns: 1fr;
+                }
+
+                .nav {
+                    margin-bottom: 18px;
+                }
+
+                .hero-actions {
+                    gap: 10px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="spectral-orb one"></div>
+        <div class="spectral-orb two"></div>
+
+        <main class="wrap">
+            <section class="hero reveal">
+                <p class="eyebrow">The Ultimate Agent Command Fabric</p>
+                <h1>
+                    The <span class="gradient-title">Highly Sophisticated</span
+                    ><br />
+                    Bash MCP Server for Autonomous Agents
+                </h1>
+                <p class="sub">
+                    Orchestrate foreground and background shell execution with
+                    deterministic timeouts, structured exit reporting,
+                    log-streaming primitives, OpenTelemetry observability, and
+                    runtime context overrides. Built for high-agency production
+                    workflows, not toy demos.
+                </p>
+
+                <div class="hero-actions">
+                    <a class="btn primary" href="#tools">Explore Tools</a>
+                    <a class="btn ghost" href="#quickstart">Quickstart</a>
+                    <a
+                        class="btn ghost"
+                        href="https://github.com/mrorigo/bash-command-mcp"
+                        >GitHub</a
+                    >
+                </div>
+
+                <div class="scan" aria-label="command telemetry">
+                    <div class="scan-head">
+                        <span class="scan-dot"></span>
+                        <span>Runtime Telemetry Stream</span>
+                    </div>
+                    <pre id="telemetry" class="scan-body"></pre>
+                </div>
+            </section>
+
+            <section class="grid">
+                <article class="card reveal">
+                    <h3>Command Intelligence</h3>
+                    <p>
+                        Every execution returns explicit `EXIT_CODE`, structured
+                        output channels, and hard timeout boundaries that keep
+                        agent workflows safe and predictable.
+                    </p>
+                </article>
+                <article class="card reveal">
+                    <h3>Background Orchestration</h3>
+                    <p>
+                        Start, track, tail, wait, and terminate long-running
+                        jobs through dedicated MCP tools, including persistent
+                        per-job stdout/stderr log files.
+                    </p>
+                </article>
+                <article class="card reveal">
+                    <h3>OpenTelemetry Native</h3>
+                    <p>
+                        Emit production-grade traces and metrics for tool calls,
+                        background lifecycle events, failures, and timeout
+                        behavior via OTLP or console exporters.
+                    </p>
+                </article>
+                <article class="card reveal">
+                    <h3>Contextual Runtime Control</h3>
+                    <p>
+                        Override `cwd` and inject scoped `env` values on demand,
+                        so each command executes in the exact context your agent
+                        intends.
+                    </p>
+                </article>
+                <article class="card reveal" id="quickstart">
+                    <h3>Fast Deployment</h3>
+                    <p>
+                        Ship instantly via `npx -y bash-command-mcp` or deploy
+                        in containerized mode with `/workspace` mapping for
+                        isolated host-folder operations.
+                    </p>
+                </article>
+                <article class="card reveal">
+                    <h3>Strict Type Safety</h3>
+                    <p>
+                        Enforced strict TypeScript plus explicit `no-explicit-any`
+                        lint rules keep contracts precise and reduce runtime
+                        ambiguity in agent execution paths.
+                    </p>
+                </article>
+            </section>
+
+            <section class="toolset reveal" id="tools">
+                <h2>Operational Tool Matrix</h2>
+                <div class="tools-grid">
+                    <article class="tool">
+                        <code>run</code>
+                        <p>
+                            Foreground execution with timeout, `cwd`, and `env`
+                            overrides.
+                        </p>
+                    </article>
+                    <article class="tool">
+                        <code>run_background</code>
+                        <p>
+                            Detached process startup with tracked PID and log
+                            file paths.
+                        </p>
+                    </article>
+                    <article class="tool">
+                        <code>list_background</code>
+                        <p>
+                            Live status, lifecycle metadata, and output log
+                            destinations.
+                        </p>
+                    </article>
+                    <article class="tool">
+                        <code>tail_background</code>
+                        <p>
+                            Read the latest log lines for instant observability.
+                        </p>
+                    </article>
+                    <article class="tool">
+                        <code>wait_background</code>
+                        <p>
+                            Block on completion with timeout and full final
+                            output snapshot.
+                        </p>
+                    </article>
+                    <article class="tool">
+                        <code>kill_background</code>
+                        <p>
+                            Terminate tracked background jobs by PID with status
+                            confirmation.
+                        </p>
+                    </article>
+                </div>
+            </section>
+
+            <p class="footer reveal">
+                bash-command-mcp: engineered for serious agentic command
+                execution, with cybernetic UX and production-grade control
+                surfaces.
+            </p>
+        </main>
+
+        <script>
+            const telemetry = document.getElementById("telemetry");
+            const streamLines = [
+                "[core] mcp-server online :: transport=stdio",
+                '[run] cmd="pnpm test" timeout=60s cwd=/workspace',
+                "[run] EXIT_CODE=0 stdout=1.7KB stderr=0B",
+                '[run_background] pid=34812 cmd="npm run dev"',
+                "[otel] span=mcp.tool.run status=ok duration_ms=86",
+                "[otel] metric=mcp_tool_calls_total tool=run value=1",
+                "[list_background] tracked=1 running=1 exited=0",
+                "[tail_background] pid=34812 lines=120",
+                "[wait_background] pid=34812 timeout=300s",
+                "[security] host-exec enabled :: prefer docker isolation",
+            ];
+
+            let i = 0;
+            function pushLine() {
+                telemetry.textContent +=
+                    (telemetry.textContent ? "\n" : "") +
+                    streamLines[i % streamLines.length];
+                i += 1;
+                const lines = telemetry.textContent.split("\n");
+                if (lines.length > 9) {
+                    telemetry.textContent = lines
+                        .slice(lines.length - 9)
+                        .join("\n");
+                }
+                telemetry.scrollTop = telemetry.scrollHeight;
+            }
+
+            for (let n = 0; n < 5; n += 1) pushLine();
+            setInterval(pushLine, 1550);
+
+            const reveals = document.querySelectorAll(".reveal");
+            const observer = new IntersectionObserver(
+                (entries) => {
+                    for (const entry of entries) {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add("show");
+                        }
+                    }
+                },
+                { threshold: 0.12 },
+            );
+            reveals.forEach((el) => observer.observe(el));
+        </script>
+    </body>
+</html>

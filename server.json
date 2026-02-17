@@ -1,0 +1,65 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.mrorigo/bash-command-mcp",
+  "description": "Sophisticated bash command MCP server that runs and manages shell execution.",
+  "registryBaseUrl": "https://registry.npmjs.org",
+  "repository": {
+    "url": "https://github.com/mrorigo/bash-command-mcp",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "bash-command-mcp",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "description": "Enable or disable OpenTelemetry instrumentation (`true` or `false`).",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "OTEL_ENABLED"
+        },
+        {
+          "description": "OpenTelemetry service name override.",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "OTEL_SERVICE_NAME"
+        },
+        {
+          "description": "OpenTelemetry service version override.",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "OTEL_SERVICE_VERSION"
+        },
+        {
+          "description": "OTLP HTTP endpoint for exporting OpenTelemetry traces and metrics (for example `http://localhost:4318`).",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "OTEL_EXPORTER_OTLP_ENDPOINT"
+        },
+        {
+          "description": "OpenTelemetry metrics export interval in milliseconds.",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "OTEL_METRIC_EXPORT_INTERVAL_MS"
+        },
+        {
+          "description": "Directory used to store background process stdout/stderr log files.",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false,
+          "name": "BASH_COMMAND_MCP_LOG_DIR"
+        }
+      ]
+    }
+  ]
+}

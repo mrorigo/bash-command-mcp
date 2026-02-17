@@ -1,0 +1,71 @@
+{
+  "name": "bash-command-mcp",
+  "version": "0.1.0",
+  "description": "Sophisticated bash command MCP server that runs and manages shell execution.",
+  "license": "MIT",
+  "homepage": "https://github.com/mrorigo/bash-command-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/mrorigo/bash-command-mcp/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mrorigo/bash-command-mcp.git"
+  },
+  "main": "./dist/index.js",
+  "bin": {
+    "bash-command-mcp": "./dist/index.js"
+  },
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "type": "module",
+  "files": [
+    "dist",
+    "README.md",
+    "Dockerfile",
+    "LICENSE"
+  ],
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "bash",
+    "cli",
+    "stdio",
+    "server"
+  ],
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "npm run clean && tsc -p tsconfig.build.json",
+    "start": "node dist/index.js",
+    "dev": "bun run --watch index.ts",
+    "lint": "oxlint -D typescript/no-explicit-any .",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run lint && npm run typecheck && npm run build"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "mcpName": "io.github.mrorigo/bash-command-mcp",
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^24.3.0",
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "oxlint": "^1.48.0",
+    "zod": "^4.3.6"
+  },
+  "optionalDependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "^0.57.2",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.57.2",
+    "@opentelemetry/resources": "^1.30.1",
+    "@opentelemetry/sdk-metrics": "^1.30.1",
+    "@opentelemetry/sdk-node": "^0.57.2",
+    "@opentelemetry/sdk-trace-base": "^1.30.1"
+  }
+}
