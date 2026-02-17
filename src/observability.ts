@@ -122,16 +122,25 @@ function asConstructor<T extends new (...args: never[]) => unknown>(
 
 function asTracerLike(value: unknown): TracerLike {
   const obj = assertObject(value, "tracer");
+  const startSpan = asCallable(obj.startSpan, "tracer.startSpan").bind(obj);
   return {
-    startSpan: asCallable(obj.startSpan, "tracer.startSpan"),
+    startSpan: startSpan as TracerLike["startSpan"],
   };
 }
 
 function asMeterLike(value: unknown): MeterLike {
   const obj = assertObject(value, "meter");
+  const createCounter = asCallable(
+    obj.createCounter,
+    "meter.createCounter",
+  ).bind(obj);
+  const createHistogram = asCallable(
+    obj.createHistogram,
+    "meter.createHistogram",
+  ).bind(obj);
   return {
-    createCounter: asCallable(obj.createCounter, "meter.createCounter"),
-    createHistogram: asCallable(obj.createHistogram, "meter.createHistogram"),
+    createCounter: createCounter as MeterLike["createCounter"],
+    createHistogram: createHistogram as MeterLike["createHistogram"],
   };
 }
 
@@ -201,11 +210,11 @@ export class Observability {
       const getTracer = asCallable<(name: string, version?: string) => unknown>(
         traceObj.getTracer,
         "otelApi.trace.getTracer",
-      );
+      ).bind(traceObj);
       const getMeter = asCallable<(name: string, version?: string) => unknown>(
         metricsObj.getMeter,
         "otelApi.metrics.getMeter",
-      );
+      ).bind(metricsObj);
 
       const otelApi: OTelApiLike = {
         trace: {
