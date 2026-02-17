@@ -50,12 +50,12 @@ Tools:
   Args: `pid`, optional `timeoutSeconds` (default `60`, min `1`).
 ## OpenTelemetry
 
-This server includes optional OpenTelemetry instrumentation for traces and metrics.
+This server includes built-in OpenTelemetry instrumentation for traces and metrics.
 
-- If OTel packages are available and `OTEL_ENABLED` is not set to `false`, telemetry is initialized.
+- OpenTelemetry packages are installed with the server package.
+- Telemetry initializes unless `OTEL_ENABLED=false`.
 - If `OTEL_EXPORTER_OTLP_ENDPOINT` is set, traces/metrics are exported via OTLP HTTP.
 - If no OTLP endpoint is configured, console exporters are used.
-- If OTel packages are not installed, the server continues normally with telemetry disabled.
 
 Instrumented operations:
 - Tool call spans for `run`, `run_background`, `list_background`, `tail_background`, `wait_background`, and `kill_background`.
@@ -78,6 +78,7 @@ OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
 OTEL_SERVICE_NAME=bash-command-mcp \
 npx -y bash-command-mcp
 ```
+
 
 ## Docker
 
