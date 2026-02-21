@@ -39,7 +39,7 @@ npx -y bash-command-mcp
 
 Tools:
 - `run`: run command in foreground.
-  Args: `command` or `cmd`, `timeoutSeconds` (default `60`, min `1`), optional `cwd`, optional `env`.
+  Args: `command` or `cmd`, `timeoutSeconds` (default `60`, min `1`; values above `86400` are capped with a hint), optional `cwd`, optional `env`.
 - `run_background`: start command in background with stdout/stderr written to log files.
   Args: `command` or `cmd`, optional `cwd`, optional `env`.
 - `list_background`: list tracked background processes, including log file paths.
@@ -47,7 +47,7 @@ Tools:
 - `tail_background`: show last N lines from background process logs.
   Args: `pid`, optional `lines` (default `200`, max `5000`).
 - `wait_background`: wait for background process completion and return final status/output.
-  Args: `pid`, optional `timeoutSeconds` (default `60`, min `1`).
+  Args: `pid`, optional `timeoutSeconds` (default `60`, min `1`; values above `86400` are capped with a hint).
 ## OpenTelemetry
 
 This server includes built-in OpenTelemetry instrumentation for traces and metrics.

@@ -22,6 +22,8 @@ const envSchema = z
   .optional()
   .describe("Environment variable overrides for the command.");
 
+const MAX_TIMEOUT_SECONDS = 24 * 3600;
+
 function formatCommandResult(
   exitCode: string,
   stdout: string,
@@ -59,6 +61,24 @@ function resolveOverrides(
   return { cwd, env };
 }
 
+function clampTimeoutSeconds(timeoutSeconds: number): {
+  effectiveTimeoutSeconds: number;
+  timeoutHint: string | null;
+} {
+  if (timeoutSeconds <= MAX_TIMEOUT_SECONDS) {
+    return { effectiveTimeoutSeconds: timeoutSeconds, timeoutHint: null };
+  }
+
+  return {
+    effectiveTimeoutSeconds: MAX_TIMEOUT_SECONDS,
+    timeoutHint: `Requested timeoutSeconds=${timeoutSeconds} exceeds max ${MAX_TIMEOUT_SECONDS}; capped to ${MAX_TIMEOUT_SECONDS}.`,
+  };
+}
+
+function appendHint(text: string, hint: string | null): string {
+  return hint ? `${text}\n\nHINT: ${hint}` : text;
+}
+
 export function registerTools(
   server: McpServer,
   backgroundManager: BackgroundProcessManager,
@@ -76,7 +96,6 @@ export function registerTools(
           .number()
           .int()
           .min(1)
-          .max(24 * 3600)
           .default(60)
           .describe("Execution timeout in seconds. Default 60."),
         cwd: z.string().optional().describe("Working directory override."),
@@ -84,10 +103,17 @@ export function registerTools(
       },
     },
     async ({ command, cmd, timeoutSeconds, cwd, env }) => {
+      const { effectiveTimeoutSeconds, timeoutHint } =
+        clampTimeoutSeconds(timeoutSeconds);
       const span = observability.toolSpan("run", {
         "mcp.command.cwd": cwd,
-        "mcp.command.timeout_seconds": timeoutSeconds,
+        "mcp.command.timeout_seconds": effectiveTimeoutSeconds,
       });
+      span.setAttribute("mcp.command.timeout_seconds.requested", timeoutSeconds);
+      span.setAttribute(
+        "mcp.command.timeout_seconds.capped",
+        effectiveTimeoutSeconds !== timeoutSeconds,
+      );
 
       try {
         const normalizedCommand = normalizeCommand(command, cmd);
@@ -107,7 +133,7 @@ export function registerTools(
         span.setAttribute("mcp.command.value", normalizedCommand);
         const result = await runForegroundCommand(
           normalizedCommand,
-          timeoutSeconds,
+          effectiveTimeoutSeconds,
           resolveOverrides(cwd, env),
         );
 
@@ -120,11 +146,14 @@ export function registerTools(
             content: [
               {
                 type: "text",
-                text: formatCommandResult(
-                  "unknown",
-                  result.stdout,
-                  result.stderr,
-                  `Command failed with error:\n${result.errorMessage}`,
+                text: appendHint(
+                  formatCommandResult(
+                    "unknown",
+                    result.stdout,
+                    result.stderr,
+                    `Command failed with error:\n${result.errorMessage}`,
+                  ),
+                  timeoutHint,
                 ),
               },
             ],
@@ -137,7 +166,7 @@ export function registerTools(
             ? String(result.exitCode)
             : "unknown";
         const timedOutMessage = result.timedOut
-          ? `Command timed out after ${timeoutSeconds} second(s).`
+          ? `Command timed out after ${effectiveTimeoutSeconds} second(s).`
           : "No output returned.";
 
         if (result.timedOut) {
@@ -155,11 +184,14 @@ export function registerTools(
           content: [
             {
               type: "text",
-              text: formatCommandResult(
-                exitCode,
-                result.stdout,
-                result.stderr,
-                timedOutMessage,
+              text: appendHint(
+                formatCommandResult(
+                  exitCode,
+                  result.stdout,
+                  result.stderr,
+                  timedOutMessage,
+                ),
+                timeoutHint,
               ),
             },
           ],
@@ -386,25 +418,31 @@ export function registerTools(
           .number()
           .int()
           .min(1)
-          .max(24 * 3600)
           .default(60)
           .describe("How long to wait before returning timeout."),
       },
     },
     async ({ pid, timeoutSeconds }) => {
+      const { effectiveTimeoutSeconds, timeoutHint } =
+        clampTimeoutSeconds(timeoutSeconds);
       const span = observability.toolSpan("wait_background", {
         "mcp.command.pid": pid,
-        "mcp.command.timeout_seconds": timeoutSeconds,
+        "mcp.command.timeout_seconds": effectiveTimeoutSeconds,
       });
+      span.setAttribute("mcp.command.timeout_seconds.requested", timeoutSeconds);
+      span.setAttribute(
+        "mcp.command.timeout_seconds.capped",
+        effectiveTimeoutSeconds !== timeoutSeconds,
+      );
 
-      const result = await backgroundManager.wait(pid, timeoutSeconds);
+      const result = await backgroundManager.wait(pid, effectiveTimeoutSeconds);
       if (!result.view) {
         span.end(false, { "mcp.command.status": "missing_process" });
         return {
           content: [
             {
               type: "text",
-              text: result.message,
+              text: appendHint(result.message, timeoutHint),
             },
           ],
           isError: true,
@@ -432,12 +470,15 @@ export function registerTools(
         content: [
           {
             type: "text",
-            text: [
-              result.message,
-              formatBackgroundView(result.view),
-              `STDOUT:\n${logs?.stdout?.trim() || "<empty>"}`,
-              `STDERR:\n${logs?.stderr?.trim() || "<empty>"}`,
-            ].join("\n\n"),
+            text: appendHint(
+              [
+                result.message,
+                formatBackgroundView(result.view),
+                `STDOUT:\n${logs?.stdout?.trim() || "<empty>"}`,
+                `STDERR:\n${logs?.stderr?.trim() || "<empty>"}`,
+              ].join("\n\n"),
+              timeoutHint,
+            ),
           },
         ],
         isError: failed,
