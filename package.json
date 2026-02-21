@@ -1,6 +1,6 @@
 {
   "name": "bash-command-mcp",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Sophisticated bash command MCP server that runs and manages shell execution.",
   "license": "MIT",
   "homepage": "https://github.com/mrorigo/bash-command-mcp#readme",
