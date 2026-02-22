@@ -23,15 +23,27 @@ export function normalizeCommand(
   command?: CommandValue,
   cmd?: CommandValue,
 ): string | null {
-  const normalized = (
-    Array.isArray(command)
-      ? command.join(" ")
-      : Array.isArray(cmd)
-        ? cmd.join(" ")
-        : (command ?? cmd)
-  )?.trim();
+  const raw = command ?? cmd;
+  let normalized = "";
 
-  return normalized || null;
+  if (Array.isArray(raw)) {
+    normalized = raw
+      .map((arg) => {
+        if (/^[a-zA-Z0-9_./:,=+@\\-]+$/.test(arg)) {
+          return arg;
+        }
+        if (!isWindows()) {
+          return `'${arg.replace(/'/g, "'\"'\"'")}'`;
+        } else {
+          return `"${arg.replace(/"/g, '""')}"`;
+        }
+      })
+      .join(" ");
+  } else if (typeof raw === "string") {
+    normalized = raw;
+  }
+
+  return normalized.trim() || null;
 }
 
 export function terminateProcess(pid: number): void {
