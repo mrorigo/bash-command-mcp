@@ -35,12 +35,16 @@
   ],
   "scripts": {
     "clean": "rm -rf dist",
-    "build": "npm run clean && tsc -p tsconfig.build.json",
-    "start": "node dist/index.js",
+    "build": "bun run clean && tsc -p tsconfig.build.json",
+    "start": "bun dist/index.js",
     "dev": "bun run --watch index.ts",
-    "lint": "oxlint -D typescript/no-explicit-any .",
-    "typecheck": "tsc --noEmit",
-    "prepublishOnly": "npm run lint && npm run typecheck && npm run build"
+    "lint:ox": "oxlint -D typescript/no-explicit-any .",
+    "lint:eslint": "eslint .",
+    "lint": "bun run lint:ox && bun run lint:eslint",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "check": "bun run lint && bun run typecheck",
+    "prepublishOnly": "bun run check && bun run build"
   },
   "engines": {
     "node": ">=18"
@@ -50,9 +54,14 @@
     "access": "public"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/bun": "latest",
     "@types/node": "^24.3.0",
-    "typescript": "^5.9.2"
+    "eslint": "^10.1.0",
+    "eslint-plugin-jsdoc": "^62.8.1",
+    "globals": "^17.4.0",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.57.2"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",

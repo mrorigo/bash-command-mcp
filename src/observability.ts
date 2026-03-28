@@ -1,6 +1,9 @@
 import { createRequire } from "node:module";
 import { getErrorMessage } from "./error-utils.js";
 
+/**
+ * Supported telemetry attribute payload for spans and metrics.
+ */
 export type TelemetryAttributes = Record<
   string,
   string | number | boolean | undefined
@@ -151,6 +154,9 @@ class NoopToolSpan implements ToolSpan {
   end(): void {}
 }
 
+/**
+ * OpenTelemetry adapter for MCP tool and background-process instrumentation.
+ */
 export class Observability {
   private tracer: TracerLike | null = null;
   private sdk: NodeSdkLike | null = null;

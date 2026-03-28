@@ -6,8 +6,14 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { terminateProcess, type CommandOverrides } from "./shell.js";
 import { getErrorMessage } from "./error-utils.js";
 
+/**
+ * Lifecycle status for a tracked background process.
+ */
 export type BackgroundStatus = "running" | "exited" | "killed" | "error";
 
+/**
+ * Serializable view of a background process record.
+ */
 export type BackgroundProcessView = {
   pid: number;
   command: string;
@@ -22,6 +28,9 @@ export type BackgroundProcessView = {
   stderrLogPath: string;
 };
 
+/**
+ * Background process lifecycle events emitted by the manager.
+ */
 export type BackgroundLifecycleEvent =
   | "started"
   | "completed"
@@ -93,6 +102,9 @@ function toView(record: BackgroundProcessRecord): BackgroundProcessView {
   };
 }
 
+/**
+ * Tracks and manages detached background shell processes and their logs.
+ */
 export class BackgroundProcessManager {
   private readonly records = new Map<number, BackgroundProcessRecord>();
   private readonly logDir: string;

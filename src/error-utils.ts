@@ -1,3 +1,6 @@
+/**
+ * Converts unknown error shapes into a readable message string.
+ */
 export function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     return error.message;

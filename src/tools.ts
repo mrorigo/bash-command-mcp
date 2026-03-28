@@ -58,7 +58,14 @@ function resolveOverrides(
   cwd?: string,
   env?: Record<string, string>,
 ): CommandOverrides {
-  return { cwd, env };
+  const overrides: CommandOverrides = {};
+  if (cwd !== undefined) {
+    overrides.cwd = cwd;
+  }
+  if (env !== undefined) {
+    overrides.env = env;
+  }
+  return overrides;
 }
 
 function clampTimeoutSeconds(timeoutSeconds: number): {
@@ -79,6 +86,9 @@ function appendHint(text: string, hint: string | null): string {
   return hint ? `${text}\n\nHINT: ${hint}` : text;
 }
 
+/**
+ * Registers command execution tools on the MCP server.
+ */
 export function registerTools(
   server: McpServer,
   backgroundManager: BackgroundProcessManager,

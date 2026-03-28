@@ -1,12 +1,21 @@
 import { spawn } from "node:child_process";
 
+/**
+ * Accepted command input shape from tool arguments.
+ */
 export type CommandValue = string | string[] | undefined;
 
+/**
+ * Optional execution overrides applied to spawned commands.
+ */
 export type CommandOverrides = {
   cwd?: string;
   env?: Record<string, string>;
 };
 
+/**
+ * Foreground command execution result.
+ */
 export type ForegroundResult = {
   exitCode: number | null;
   stdout: string;
@@ -19,6 +28,9 @@ function isWindows(): boolean {
   return process.platform === "win32";
 }
 
+/**
+ * Normalizes command input into a shell-safe command string.
+ */
 export function normalizeCommand(
   command?: CommandValue,
   cmd?: CommandValue,
@@ -46,6 +58,9 @@ export function normalizeCommand(
   return normalized.trim() || null;
 }
 
+/**
+ * Terminates a process, including the full process group on non-Windows hosts.
+ */
 export function terminateProcess(pid: number): void {
   if (!isWindows()) {
     process.kill(-pid, "SIGTERM");
@@ -54,6 +69,9 @@ export function terminateProcess(pid: number): void {
   process.kill(pid, "SIGTERM");
 }
 
+/**
+ * Runs a shell command in the foreground and collects buffered output.
+ */
 export async function runForegroundCommand(
   command: string,
   timeoutSeconds: number,
