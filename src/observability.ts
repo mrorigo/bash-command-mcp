@@ -1,4 +1,10 @@
-import { createRequire } from "node:module";
+import * as otelApi from "@opentelemetry/api";
+import { ConsoleMetricExporter, PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
+import { ConsoleSpanExporter } from "@opentelemetry/sdk-trace-base";
+import { NodeSDK } from "@opentelemetry/sdk-node";
+import { Resource } from "@opentelemetry/resources";
+import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
+import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { getErrorMessage } from "./error-utils.js";
 
 /**
@@ -45,30 +51,10 @@ type MeterLike = {
   ) => HistogramLike;
 };
 
-type OTelApiLike = {
-  trace: {
-    getTracer: (name: string, version?: string) => TracerLike;
-  };
-  metrics: {
-    getMeter: (name: string, version?: string) => MeterLike;
-  };
-  SpanStatusCode: {
-    ERROR: number;
-  };
-};
-
 type NodeSdkLike = {
   start: () => Promise<void> | void;
   shutdown: () => Promise<void>;
 };
-
-type NodeSdkCtor = new (options: {
-  resource: unknown;
-  traceExporter: unknown;
-  metricReader: unknown;
-}) => NodeSdkLike;
-
-type ResourceCtor = new (attributes: Record<string, string>) => unknown;
 
 type ToolSpan = {
   setAttribute: (key: string, value: string | number | boolean) => void;
@@ -93,16 +79,6 @@ function sanitizeAttributes(attrs: TelemetryAttributes): SanitizedAttributes {
   return out;
 }
 
-function assertObject(
-  value: unknown,
-  context: string,
-): Record<string, unknown> {
-  if (!value || typeof value !== "object") {
-    throw new Error(`${context}: expected object`);
-  }
-  return value as Record<string, unknown>;
-}
-
 function asCallable<T extends (...args: never[]) => unknown>(
   value: unknown,
   context: string,
@@ -113,34 +89,25 @@ function asCallable<T extends (...args: never[]) => unknown>(
   return value as T;
 }
 
-function asConstructor<T extends new (...args: never[]) => unknown>(
-  value: unknown,
-  context: string,
-): T {
-  if (typeof value !== "function") {
-    throw new Error(`${context}: expected constructor`);
-  }
-  return value as T;
-}
-
 function asTracerLike(value: unknown): TracerLike {
-  const obj = assertObject(value, "tracer");
-  const startSpan = asCallable(obj.startSpan, "tracer.startSpan").bind(obj);
+  const startSpan = asCallable(
+    (value as { startSpan?: unknown }).startSpan,
+    "tracer.startSpan",
+  ).bind(value);
   return {
     startSpan: startSpan as TracerLike["startSpan"],
   };
 }
 
 function asMeterLike(value: unknown): MeterLike {
-  const obj = assertObject(value, "meter");
   const createCounter = asCallable(
-    obj.createCounter,
+    (value as { createCounter?: unknown }).createCounter,
     "meter.createCounter",
-  ).bind(obj);
+  ).bind(value);
   const createHistogram = asCallable(
-    obj.createHistogram,
+    (value as { createHistogram?: unknown }).createHistogram,
     "meter.createHistogram",
-  ).bind(obj);
+  ).bind(value);
   return {
     createCounter: createCounter as MeterLike["createCounter"],
     createHistogram: createHistogram as MeterLike["createHistogram"],
@@ -189,117 +156,24 @@ export class Observability {
       return;
     }
 
-    const requireFn = createRequire(import.meta.url);
-
     try {
-      const otelApiUnknown = requireFn("@opentelemetry/api") as unknown;
-      const sdkNodeUnknown = requireFn("@opentelemetry/sdk-node") as unknown;
-      const resourcesUnknown = requireFn("@opentelemetry/resources") as unknown;
-
-      const otelApiObj = assertObject(otelApiUnknown, "@opentelemetry/api");
-      const sdkNodeObj = assertObject(
-        sdkNodeUnknown,
-        "@opentelemetry/sdk-node",
-      );
-      const resourcesObj = assertObject(
-        resourcesUnknown,
-        "@opentelemetry/resources",
-      );
-
-      const traceObj = assertObject(otelApiObj.trace, "otelApi.trace");
-      const metricsObj = assertObject(otelApiObj.metrics, "otelApi.metrics");
-      const spanStatusObj = assertObject(
-        otelApiObj.SpanStatusCode,
-        "otelApi.SpanStatusCode",
-      );
-
-      const getTracer = asCallable<(name: string, version?: string) => unknown>(
-        traceObj.getTracer,
-        "otelApi.trace.getTracer",
-      ).bind(traceObj);
-      const getMeter = asCallable<(name: string, version?: string) => unknown>(
-        metricsObj.getMeter,
-        "otelApi.metrics.getMeter",
-      ).bind(metricsObj);
-
-      const otelApi: OTelApiLike = {
-        trace: {
-          getTracer: (name, version) => asTracerLike(getTracer(name, version)),
-        },
-        metrics: {
-          getMeter: (name, version) => asMeterLike(getMeter(name, version)),
-        },
-        SpanStatusCode: {
-          ERROR:
-            typeof spanStatusObj.ERROR === "number" ? spanStatusObj.ERROR : 2,
-        },
-      };
-
-      const nodeSdkCtor = asConstructor<NodeSdkCtor>(
-        sdkNodeObj.NodeSDK,
-        "NodeSDK",
-      );
-      const resourceCtor = asConstructor<ResourceCtor>(
-        resourcesObj.Resource,
-        "Resource",
-      );
-
       const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
 
-      let traceExporter: unknown;
-      let metricReader: unknown;
+      let traceExporter: ConsoleSpanExporter | OTLPTraceExporter;
+      let metricReader: PeriodicExportingMetricReader;
       let exporterName = "console";
 
       if (endpoint) {
-        const traceHttpUnknown = requireFn(
-          "@opentelemetry/exporter-trace-otlp-http",
-        ) as unknown;
-        const metricHttpUnknown = requireFn(
-          "@opentelemetry/exporter-metrics-otlp-http",
-        ) as unknown;
-        const metricsSdkUnknown = requireFn(
-          "@opentelemetry/sdk-metrics",
-        ) as unknown;
-
-        const traceHttpObj = assertObject(
-          traceHttpUnknown,
-          "trace exporter module",
-        );
-        const metricHttpObj = assertObject(
-          metricHttpUnknown,
-          "metric exporter module",
-        );
-        const metricsSdkObj = assertObject(
-          metricsSdkUnknown,
-          "metrics sdk module",
-        );
-
-        const otlpTraceCtor = asConstructor<
-          new (opts: { url: string }) => unknown
-        >(traceHttpObj.OTLPTraceExporter, "OTLPTraceExporter");
-        const otlpMetricCtor = asConstructor<
-          new (opts: { url: string }) => unknown
-        >(metricHttpObj.OTLPMetricExporter, "OTLPMetricExporter");
-        const periodicReaderCtor = asConstructor<
-          new (opts: {
-            exporter: unknown;
-            exportIntervalMillis: number;
-          }) => unknown
-        >(
-          metricsSdkObj.PeriodicExportingMetricReader,
-          "PeriodicExportingMetricReader",
-        );
-
         const baseEndpoint = endpoint.replace(/\/$/, "");
-        traceExporter = new otlpTraceCtor({
+        traceExporter = new OTLPTraceExporter({
           url: `${baseEndpoint}/v1/traces`,
         });
 
-        const metricExporter = new otlpMetricCtor({
+        const metricExporter = new OTLPMetricExporter({
           url: `${baseEndpoint}/v1/metrics`,
         });
 
-        metricReader = new periodicReaderCtor({
+        metricReader = new PeriodicExportingMetricReader({
           exporter: metricExporter,
           exportIntervalMillis: Number(
             process.env.OTEL_METRIC_EXPORT_INTERVAL_MS || 10000,
@@ -308,43 +182,9 @@ export class Observability {
 
         exporterName = "otlp_http";
       } else {
-        const traceBaseUnknown = requireFn(
-          "@opentelemetry/sdk-trace-base",
-        ) as unknown;
-        const metricsSdkUnknown = requireFn(
-          "@opentelemetry/sdk-metrics",
-        ) as unknown;
-
-        const traceBaseObj = assertObject(
-          traceBaseUnknown,
-          "trace base module",
-        );
-        const metricsSdkObj = assertObject(
-          metricsSdkUnknown,
-          "metrics sdk module",
-        );
-
-        const consoleSpanCtor = asConstructor<new () => unknown>(
-          traceBaseObj.ConsoleSpanExporter,
-          "ConsoleSpanExporter",
-        );
-        const periodicReaderCtor = asConstructor<
-          new (opts: {
-            exporter: unknown;
-            exportIntervalMillis: number;
-          }) => unknown
-        >(
-          metricsSdkObj.PeriodicExportingMetricReader,
-          "PeriodicExportingMetricReader",
-        );
-        const consoleMetricCtor = asConstructor<new () => unknown>(
-          metricsSdkObj.ConsoleMetricExporter,
-          "ConsoleMetricExporter",
-        );
-
-        traceExporter = new consoleSpanCtor();
-        metricReader = new periodicReaderCtor({
-          exporter: new consoleMetricCtor(),
+        traceExporter = new ConsoleSpanExporter();
+        metricReader = new PeriodicExportingMetricReader({
+          exporter: new ConsoleMetricExporter(),
           exportIntervalMillis: Number(
             process.env.OTEL_METRIC_EXPORT_INTERVAL_MS || 15000,
           ),
@@ -354,12 +194,12 @@ export class Observability {
       const serviceName = process.env.OTEL_SERVICE_NAME || "bash-command-mcp";
       const serviceVersion = process.env.OTEL_SERVICE_VERSION || "1.0.0";
 
-      const resource = new resourceCtor({
+      const resource = new Resource({
         "service.name": serviceName,
         "service.version": serviceVersion,
       });
 
-      this.sdk = new nodeSdkCtor({
+      this.sdk = new NodeSDK({
         resource,
         traceExporter,
         metricReader,
@@ -367,8 +207,8 @@ export class Observability {
 
       await this.sdk.start();
 
-      this.tracer = otelApi.trace.getTracer(serviceName, serviceVersion);
-      const meter = otelApi.metrics.getMeter(serviceName, serviceVersion);
+      this.tracer = asTracerLike(otelApi.trace.getTracer(serviceName, serviceVersion));
+      const meter = asMeterLike(otelApi.metrics.getMeter(serviceName, serviceVersion));
 
       this.spanStatusCodeError = otelApi.SpanStatusCode.ERROR;
       this.toolCalls = meter.createCounter("mcp_tool_calls_total", {

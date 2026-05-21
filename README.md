@@ -121,10 +121,22 @@ Run with a local folder mounted at `/workspace`:
 docker run --rm -i -v "$(pwd):/workspace" bash-command-mcp
 ```
 
+Run over Streamable HTTP:
+
+```bash
+docker run --rm -p 3000:3000 \
+  -e BASH_COMMAND_MCP_TRANSPORT=http \
+  -e BASH_COMMAND_MCP_HOST=0.0.0.0 \
+  -e BASH_COMMAND_MCP_PORT=3000 \
+  bash-command-mcp
+```
+
 `/workspace` mapping explained:
 - Left side (`$(pwd)`) is a folder on your host machine.
 - Right side (`/workspace`) is the path inside the container.
 - Commands run by this MCP server should target files under `/workspace`; those changes are written back to the mapped host folder.
+
+For HTTP mode in Docker, bind to `0.0.0.0` and publish the port with `-p`. If you expose the container beyond localhost, set `BASH_COMMAND_MCP_ALLOWED_HOSTS` to the hostnames you want to permit.
 
 Example:
 - If your host has `./project/file.txt` and you run the container from `./project`, the same file is available in the container at `/workspace/file.txt`.
