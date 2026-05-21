@@ -1,6 +1,6 @@
 {
   "name": "bash-command-mcp",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Sophisticated bash command MCP server that runs and manages shell execution.",
   "license": "MIT",
   "homepage": "https://github.com/mrorigo/bash-command-mcp#readme",
@@ -31,6 +31,8 @@
     "bash",
     "cli",
     "stdio",
+    "http",
+    "streamable-http",
     "server"
   ],
   "scripts": {
@@ -47,7 +49,7 @@
     "prepublishOnly": "bun run check && bun run build"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "mcpName": "io.github.mrorigo/bash-command-mcp",
   "publishConfig": {

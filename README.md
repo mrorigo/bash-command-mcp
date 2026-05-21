@@ -15,9 +15,18 @@ To install dependencies:
 bun install
 ```
 
-To run:
+To run over stdio:
 
 ```bash
+bun run index.ts
+```
+
+To run over Streamable HTTP:
+
+```bash
+BASH_COMMAND_MCP_TRANSPORT=http \
+BASH_COMMAND_MCP_HOST=127.0.0.1 \
+BASH_COMMAND_MCP_PORT=3000 \
 bun run index.ts
 ```
 
@@ -78,6 +87,24 @@ OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
 OTEL_SERVICE_NAME=bash-command-mcp \
 npx -y bash-command-mcp
 ```
+
+## Transports
+
+This server supports two transports:
+
+- `stdio` for local, process-spawned integrations.
+- `http` for remote or network-accessible MCP clients using Streamable HTTP.
+
+Default behavior remains `stdio` so existing desktop and CLI setups keep working.
+
+Environment variables for HTTP mode:
+
+- `BASH_COMMAND_MCP_TRANSPORT=http|stdio`
+- `BASH_COMMAND_MCP_HOST=127.0.0.1`
+- `BASH_COMMAND_MCP_PORT=3000`
+- `BASH_COMMAND_MCP_ALLOWED_HOSTS=localhost,127.0.0.1,[::1]`
+
+HTTP mode uses host-header validation by default when bound to a loopback address. If you bind to `0.0.0.0` or `::`, provide an explicit allow-list in `BASH_COMMAND_MCP_ALLOWED_HOSTS`.
 
 
 ## Docker

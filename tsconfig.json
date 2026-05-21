@@ -23,7 +23,7 @@
     "noImplicitThis": true,
     "noPropertyAccessFromIndexSignature": false,
     "forceConsistentCasingInFileNames": true,
-    "types": ["node"]
+    "types": ["node", "bun"]
   },
   "include": ["index.ts", "src/**/*.ts"]
 }
